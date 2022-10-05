@@ -28,6 +28,9 @@ const app = express();
 app.set("views", __dirname);
 app.set("view engine", "ejs");
 
+app.use(session({ secret: "cats", resave: false, saveUninitialized: true }));
+
+// START PASSPORT
 // Passport rules must come before passport initialization
 passport.use(
   new LocalStrategy((username, password, done) => {
@@ -52,20 +55,23 @@ passport.use(
   })
 );
 
-// Define what information passport is looking for when creating and decoding cookie
+// User object is serialized and added to 'req.session.passport' object
+// Serialized allows only database ID to be stored for session use instead of entire user object
 passport.serializeUser(function (user, done) {
   done(null, user.id);
 });
-
+// Deserialize allows retrieval of more user information from serialized form when necessary
 passport.deserializeUser(function (id, done) {
   User.findById(id, function (err, user) {
     done(err, user);
   });
 });
 
-app.use(session({ secret: "cats", resave: false, saveUninitialized: true }));
+// Execute middleware in order an every request
+// -- Necessary for integrating PassportJS with express-session -- so they must come after app.use(session({}))
 app.use(passport.initialize());
 app.use(passport.session());
+// -- END PASSPORT
 
 // Get access to currentUser variable in all views with locals object
 // Must come after passport instantiation and before view renders
@@ -75,6 +81,8 @@ app.use(function (req, res, next) {
 });
 
 app.use(express.urlencoded({ extended: false }));
+
+// ------ ROUTES ---------
 
 app.get("/", (req, res) => {
   res.render("index", { user: req.user });
